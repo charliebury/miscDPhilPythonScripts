@@ -11,20 +11,20 @@ class batchParseAimlessLog():
 	# the full series
 
 	def __init__(self,
-				 numDatasets = 22,
-				 presets     = 'DNA'):
+				 numDatasets = 11,
+				 presets     = 'CCCT'):
 
 		self.numDatasets = numDatasets
 		self.getPresets(type = presets)
 
-		lists = {'AvI':[],
-				 'NMeas':[],
-				 'full':[]}
+		lists = {'AvI'   : [],
+				 'NMeas' : [],
+				 'full'  : []}
 
 		for i in range(numDatasets):
-
+			dName = '{}{}'.format(self.datasetNamePrefix,i+1)
 			p = parseAimlessLog(location    = self.locations[i],
-								datasetName = '{}{}'.format(self.datasetNamePrefix,i+1),
+								datasetName = dName,
 								printText   = False)
 			output =p.getOutput()
 	
@@ -33,6 +33,21 @@ class batchParseAimlessLog():
 			lists['full'].append(output[2])
 
 		self.data = lists
+
+	def plotGraphs(self):
+
+		# plot and save all key graphs in one go
+
+		self.plotDataByResBin(index    = 'NMeas',
+							  saveFig  = True)
+		self.plotDataByResBin(index    = 'AvI',
+							  saveFig  = True)
+		self.plotDataByDataset(index   = 'NMeas',
+							   saveFig = True,
+							   bin     = 'overall')
+		self.plotDataByDataset(index   = 'AvI',
+							   saveFig = True,
+							   bin     = 'overall')
 
 	def rearrangeDataByBin(self,
 						   bin   = 0,
@@ -55,49 +70,92 @@ class batchParseAimlessLog():
 			binData.append(chosenData)
 		return binData
 
-	def plotData(self,
-				 bin           = 0,
-				 index         = 'AvI',
-				 saveFig       = False,
-				 axisFontSize  = 18,
-				 titleFontSize = 24):
+	def plotDataByResBin(self,
+						 dataset       = 'all',
+						 index         = 'AvI',
+						 saveFig       = False,
+						 axisFontSize  = 18,
+						 titleFontSize = 24,
+						 plotType      = '.svg'):
+
+		# plot graph of metric against resolution bin, for each dataset.
+		# 'dataset' takes 'all' to plot for all datasets or an integer n
+		# to plot for dataset n
+
+		sns.set_palette(palette  = 'hls',
+						n_colors = self.numDatasets,
+						desat    = .6)
+		sns.set_context(rc = {"figure.figsize":(10, 10)})
+		fig = plt.figure()
+
+		if dataset != 'all':
+			title = '{} values per resolution bin: dataset {}'.format(index,dataset+1)
+			saveName = '{}_dataset-{}{}'.format(index,dataset,plotType)
+			xData = self.data['full'][dataset]['Dmid']
+			yData = self.data['full'][dataset][index]
+			plt.plot(xData,
+					 yData,
+					 label = 'Dataset {}'.format(dataset+1))
+
+		else:
+			for d in range(self.numDatasets):
+				title = '{} values per resolution bin: all datasets'.format(index)
+				saveName = '{}_dataset-all{}'.format(index,plotType)
+				xData = self.data['full'][d]['Dmid']
+				yData = self.data['full'][d][index]
+				plt.plot(xData,
+						 yData,
+						 label = 'Dataset {}'.format(d+1))
+				plt.legend(loc = 'best')
+
+		plt.xlabel('Resolution bin centre (Angstroms)',
+			       fontsize = axisFontSize)
+		plt.ylabel(index,
+				   fontsize = axisFontSize)
+		fig.suptitle(title, 
+					 fontsize = titleFontSize)
+
+		if saveFig is False:
+			plt.show()
+		else:
+			fig.savefig(saveName)	
+
+	def plotDataByDataset(self,
+				 		  bin           = 0,
+				 		  index         = 'AvI',
+				 		  saveFig       = False,
+				 		  axisFontSize  = 18,
+				 		  titleFontSize = 24,
+				 		  plotType      = '.svg'):
 
 		# plot a specific bin's values for each successive dataset
 
-		if bin not in ('overall','all'):
+		if bin !='overall':
 			data = self.rearrangeDataByBin(bin   = bin,
 										   index = index)
 			title = '{} values per dataset: bin {}'.format(index,bin)
-			saveName = '{}bin{}.png'.format(index,bin)
+			saveName = '{}_bin-{}{}'.format(index,bin,plotType)
 		elif bin == 'overall':
 			data = self.data[index]
 			title = '{} overall values per dataset'.format(index)
-			saveName = '{}overall.png'.format(index)
-		elif bin == 'all':
-			data = []
-			for i in range(self.numDatasets):
-				d = self.rearrangeDataByBin(bin   = i,
-											index = index)
-				data.append(d)
-			title = '{} values per dataset: all bins'.format(index)
-			saveName = '{}AllBins.png'.format(index)
+			saveName = '{}_overall{}'.format(index,plotType)
 
 		sns.set_palette(palette  = 'hls',
 						n_colors = self.numDatasets,
 						desat    = .6)
 		sns.set_context(rc={"figure.figsize":(10, 10)})
 		fig = plt.figure()
-		if bin != 'all':
-			plt.plot(range(1,len(data)+1),data)
-		else:
-			for i in range(self.numDatasets):
-				plt.plot(range(1,len(data[i])+1),data[i],label='Bin {}'.format(i))
-				plt.legend()
 
-		plt.xlabel('Dataset',fontsize=axisFontSize)
-		plt.ylabel(index,fontsize=axisFontSize)
+		plt.plot(range(1,len(data)+1),data)
+
+		plt.xlabel('Dataset',
+				   fontsize = axisFontSize)
+		plt.ylabel(index,
+				   fontsize = axisFontSize)
 		plt.xlim(0,self.numDatasets+1)
-		fig.suptitle(title,fontsize=titleFontSize)
+		fig.suptitle(title,
+					 fontsize = titleFontSize)
+
 		if saveFig is False:
 			plt.show()
 		else:
@@ -105,15 +163,17 @@ class batchParseAimlessLog():
 
 	def getPresets(self,type='DNA'):
 
-		# presets for DIALS processing. Here
-		# two sets of preset values are included
-		# for two processing sessions. User 
-		# will need to modify accordingly
+		# presets for DIALS processing
 
 		if type == 'DNA':
 			self.locations = ['dataset{}-b/'.format(i+1) for i in range(self.numDatasets)]
 			self.datasetNamePrefix = 'FROMDIALS'
+
 		elif type == 'GH7':
+			self.locations = ['dataset{}/'.format(i+1) for i in range(self.numDatasets)]
+			self.datasetNamePrefix = 'FROMDIALS'
+
+		elif type == 'CCCT':
 			self.locations = ['dataset{}/'.format(i+1) for i in range(self.numDatasets)]
 			self.datasetNamePrefix = 'FROMDIALS'
 
@@ -153,8 +213,8 @@ class parseAimlessLog():
 
 	def findLogInDir(self):
 
-		# rather than explicitly provide a log 
-		# file name, find a .log file in directory
+		# rather than explicitly provide a log file name,
+		#  find a .log file in directory
 
 		for file in os.listdir(self.location):
 			if file.endswith('.log') is True:
@@ -171,7 +231,11 @@ class parseAimlessLog():
 
 		tableFound = False
 		readNextLine = False
-		data = {'NMeas':[],'AvI':[]}
+
+		data = {'NMeas' : [],
+				 'AvI'  : [],
+				 'Dmid' : []}
+
 		for l in aimlessLog.readlines():
 			if '$TABLE:  Analysis against resolution, {}'.format(self.datasetName) in l:
 				tableFound = True
@@ -187,6 +251,7 @@ class parseAimlessLog():
 					else:
 						data['NMeas'].append(int(l.split()[8]))
 						data['AvI'].append(int(l.split()[9]))
+						data['Dmid'].append(float(l.split()[2]))
 		aimlessLog.close()
 
 		# calculate In metric here
