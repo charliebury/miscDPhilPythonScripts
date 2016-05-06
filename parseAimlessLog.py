@@ -12,7 +12,8 @@ class batchParseAimlessLog():
 
 	def __init__(self,
 				 numDatasets = 11,
-				 presets     = 'CCCT'):
+				 presets     = 'CCCT',
+				 autoPlot    = False):
 
 		self.numDatasets = numDatasets
 		self.getPresets(type = presets)
@@ -33,6 +34,9 @@ class batchParseAimlessLog():
 			lists['full'].append(output[2])
 
 		self.data = lists
+
+		if autoPlot is True:
+			self.plotGraphs()
 
 	def plotGraphs(self):
 
@@ -123,6 +127,8 @@ class batchParseAimlessLog():
 	def plotDataByDataset(self,
 				 		  bin           = 0,
 				 		  index         = 'AvI',
+				 		  normalise     = False,
+				 		  normCycle     = 1,
 				 		  saveFig       = False,
 				 		  axisFontSize  = 18,
 				 		  titleFontSize = 24,
@@ -134,11 +140,23 @@ class batchParseAimlessLog():
 			data = self.rearrangeDataByBin(bin   = bin,
 										   index = index)
 			title = '{} values per dataset: bin {}'.format(index,bin)
-			saveName = '{}_bin-{}{}'.format(index,bin,plotType)
+			saveName = '{}_bin-{}_normalise-{}{}'.format(index,bin,normalise,plotType)
+
 		elif bin == 'overall':
 			data = self.data[index]
 			title = '{} overall values per dataset'.format(index)
-			saveName = '{}_overall{}'.format(index,plotType)
+			saveName = '{}_overall_normalise-{}{}'.format(index,normalise,plotType)
+
+		# normalise data if required and allow normalisation 
+		# by non-start values (i.e can normalise every odd 
+		# term by I1 and even term by I2 if normCyle = 2)
+		if normalise is True:
+			plotData = []
+			for d in data:
+				j = len(plotData) % normCycle
+				plotData.append(float(d)/data[j])
+		else:
+			plotData = data
 
 		sns.set_palette(palette  = 'hls',
 						n_colors = self.numDatasets,
@@ -146,7 +164,7 @@ class batchParseAimlessLog():
 		sns.set_context(rc={"figure.figsize":(10, 10)})
 		fig = plt.figure()
 
-		plt.plot(range(1,len(data)+1),data)
+		plt.plot(range(1,len(plotData)+1),plotData)
 
 		plt.xlabel('Dataset',
 				   fontsize = axisFontSize)
