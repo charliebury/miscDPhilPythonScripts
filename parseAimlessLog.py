@@ -140,12 +140,12 @@ class batchParseAimlessLog():
 			data = self.rearrangeDataByBin(bin   = bin,
 										   index = index)
 			title = '{} values per dataset: bin {}'.format(index,bin)
-			saveName = '{}_bin-{}_normalise-{}{}'.format(index,bin,normalise,plotType)
+			saveName = '{}_bin-{}{}'.format(index,bin,plotType)
 
 		elif bin == 'overall':
 			data = self.data[index]
 			title = '{} overall values per dataset'.format(index)
-			saveName = '{}_overall_normalise-{}{}'.format(index,normalise,plotType)
+			saveName = '{}_overall{}'.format(index,plotType)
 
 		# normalise data if required and allow normalisation 
 		# by non-start values (i.e can normalise every odd 
@@ -155,9 +155,11 @@ class batchParseAimlessLog():
 			for d in data:
 				j = len(plotData) % normCycle
 				plotData.append(float(d)/data[j])
+			saveName = saveName.replace(plotType,'_normalise-{}_normCyle-{}{}'.format(normalise,normCycle,plotType))
+		
 		else:
 			plotData = data
-
+			
 		sns.set_palette(palette  = 'hls',
 						n_colors = self.numDatasets,
 						desat    = .6)
